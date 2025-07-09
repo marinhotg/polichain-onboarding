@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "compile": "npx hardhat compile",
+    "node": "npx hardhat node",
+    "deploy": "npx hardhat run scripts/deploy.cjs --network localhost"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
@@ -20,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@nomicfoundation/hardhat-ethers": "^3.0.9",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -27,6 +31,8 @@
     "@types/sqlite3": "^3.1.11",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
+    "ethers": "^6.15.0",
+    "hardhat": "^2.25.0",
     "prisma": "^6.9.0",
     "sqlite3": "^5.1.7",
     "tailwindcss": "^4",
