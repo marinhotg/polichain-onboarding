@@ -1,6 +1,7 @@
 'use client';
-
 import { useState, useEffect } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
 
 interface Item {
   id: number;
@@ -10,6 +11,7 @@ interface Item {
 }
 
 export default function Home() {
+  const { isConnected } = useAccount();
   const [items, setItems] = useState<Item[]>([]);
   const [novoItem, setNovoItem] = useState({ nome: '', descricao: '' });
 
@@ -20,8 +22,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    carregarItems();
-  }, []);
+    if (isConnected) {
+      carregarItems();
+    }
+  }, [isConnected]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +45,21 @@ export default function Home() {
     carregarItems();
   };
 
+  if (!isConnected) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-3xl font-bold mb-8">Conecte sua Carteira</h1>
+        <ConnectButton />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold mb-8">Gerenciador de Itens</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Gerenciador de Itens</h1>
+        <ConnectButton />
+      </div>
       
       <form onSubmit={handleSubmit} className="mb-8 space-y-4">
         <div>
