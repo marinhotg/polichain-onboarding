@@ -1,54 +1,48 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-
-interface Item {
-  id: number;
-  nome: string;
-  descricao: string | null;
-  createdAt: string;
-}
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { ItemManagerABI, ITEM_MANAGER_ADDRESS } from '../lib/contracts';
 
 export default function Home() {
+
   const { isConnected } = useAccount();
-  const [items, setItems] = useState<Item[]>([]);
   const [novoItem, setNovoItem] = useState({ nome: '', descricao: '' });
 
-  const carregarItems = async () => {
-    const response = await fetch('/api/items');
-    const data = await response.json();
-    setItems(data);
-  };
+  const { writeContract, data: hash, isPending } = useWriteContract();
 
-  useEffect(() => {
-    if (isConnected) {
-      carregarItems();
-    }
-  }, [isConnected]);
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = 
+    useWaitForTransactionReceipt({ hash });
+
+  const { data: nextItemId, refetch } = useReadContract({
+    address: ITEM_MANAGER_ADDRESS,
+    abi: ItemManagerABI,
+    functionName: 'nextItemId',
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(novoItem),
+    if (!novoItem.nome) return;
+
+    writeContract({
+      address: ITEM_MANAGER_ADDRESS,
+      abi: ItemManagerABI,
+      functionName: 'criarItem',
+      args: [novoItem.nome, novoItem.descricao],
     });
+
     setNovoItem({ nome: '', descricao: '' });
-    carregarItems();
   };
 
-  const handleDelete = async (id: number) => {
-    await fetch(`/api/items?id=${id}`, {
-      method: 'DELETE',
-    });
-    carregarItems();
-  };
+  if (isConfirmed) {
+    refetch();
+  }
 
   if (!isConnected) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-3xl font-bold mb-8">Conecte sua Carteira</h1>
+        <p className="text-gray-600 mb-8">Para acessar o Gerenciador de Itens Web3</p>
         <ConnectButton />
       </main>
     );
@@ -57,10 +51,18 @@ export default function Home() {
   return (
     <main className="min-h-screen p-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Gerenciador de Itens</h1>
+        <h1 className="text-3xl font-bold">Gerenciador de Itens Web3</h1>
         <ConnectButton />
       </div>
-      
+
+      {hash && (
+        <div className="mb-4 p-4">
+          {isConfirming && <p>⏳ Aguardando confirmação...</p>}
+          {isConfirmed && <p>✅ Transação confirmada!</p>}
+          <p className="text-sm">Hash: {hash.slice(0, 10)}...{hash.slice(-8)}</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="mb-8 space-y-4">
         <div>
           <input
@@ -78,27 +80,22 @@ export default function Home() {
             onChange={(e) => setNovoItem({ ...novoItem, descricao: e.target.value })}
             className="border p-2 mr-2"
           />
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-            Adicionar Item
+          <button 
+            type="submit" 
+            disabled={isPending}
+            className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-400"
+          >
+            {isPending ? 'Criando...' : 'Adicionar Item'}
           </button>
         </div>
       </form>
 
       <div className="space-y-4">
-        {items.map((item) => (
-          <div key={item.id} className="border p-4 rounded flex justify-between items-center">
-            <div>
-              <h3 className="font-bold">{item.nome}</h3>
-              {item.descricao && <p className="text-gray-600">{item.descricao}</p>}
-            </div>
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="bg-red-500 text-white px-4 py-2 rounded"
-            >
-              Deletar
-            </button>
-          </div>
-        ))}
+        <h2 className="text-xl font-bold">Total de Items: {nextItemId ? Number(nextItemId) - 1 : 0}</h2>
+        
+        <p className="text-gray-600">
+          Items criados no contrato: {ITEM_MANAGER_ADDRESS.slice(0, 6)}...{ITEM_MANAGER_ADDRESS.slice(-4)}
+        </p>
       </div>
     </main>
   );
